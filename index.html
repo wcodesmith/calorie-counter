@@ -59,7 +59,7 @@
                     <i class="fa-solid fa-user-pen"></i>
                 </div>
                 <h2 class="text-xl font-bold text-slate-900">Welcome to NutriSnap</h2>
-                <p class="text-sm text-slate-500 mt-1">Let's set up your profile and daily calorie targets to personalize your experience.</p>
+                <p class="text-sm text-slate-500 mt-1">Let's set up your profile and daily targets to personalize your experience.</p>
             </div>
 
             <form @submit.prevent="saveProfile" class="space-y-4">
@@ -112,6 +112,17 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Protein Target (g)</label>
+                        <input type="number" x-model.number="profile.proteinGoal" required min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Carbs Target (g)</label>
+                        <input type="number" x-model.number="profile.carbsGoal" required min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
+                    </div>
+                </div>
+
                 <button type="submit" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl shadow-md shadow-brand-500/20 transition text-sm">
                     Save & Get Started
                 </button>
@@ -151,15 +162,15 @@
                     <div class="bg-brand-500 h-full rounded-full transition-all duration-500" :style="'width: ' + Math.min(100, (getTodayConsumed() / profile.calorieGoal) * 100) + '%'"></div>
                 </div>
 
-                <!-- Macros Breakdown -->
+                <!-- Macros Breakdown with Targets -->
                 <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-center">
                     <div class="bg-slate-50 p-2 rounded-xl">
                         <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Protein</span>
-                        <span class="text-sm font-bold text-slate-700"><span x-text="getTodayMacro('protein')"></span>g</span>
+                        <span class="text-sm font-bold text-slate-700"><span x-text="getTodayMacro('protein')"></span> / <span x-text="profile.proteinGoal || 0"></span>g</span>
                     </div>
                     <div class="bg-slate-50 p-2 rounded-xl">
                         <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Carbs</span>
-                        <span class="text-sm font-bold text-slate-700"><span x-text="getTodayMacro('carbs')"></span>g</span>
+                        <span class="text-sm font-bold text-slate-700"><span x-text="getTodayMacro('carbs')"></span> / <span x-text="profile.carbsGoal || 0"></span>g</span>
                     </div>
                     <div class="bg-slate-50 p-2 rounded-xl">
                         <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Fat</span>
@@ -249,7 +260,7 @@
             </div>
         </div>
 
-        <!-- SETTINGS TAB (Updated with Export & Import Buttons) -->
+        <!-- SETTINGS TAB (Updated with Weight, Protein, and Carbs targets) -->
         <div x-show="profile.configured && activeTab === 'settings'" x-cloak class="space-y-4">
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
                 <h3 class="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">Edit Profile & Goals</h3>
@@ -264,8 +275,8 @@
                             <input type="number" x-model.number="profile.age" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Weight (kg)</label>
-                            <input type="number" x-model.number="profile.weight" required step="0.1" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Current Weight (kg)</label>
+                            <input type="number" x-model.number="profile.weight" required step="0.1" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50 font-bold text-slate-900">
                         </div>
                     </div>
                     <div>
@@ -273,6 +284,16 @@
                         <div class="flex space-x-2">
                             <input type="number" x-model.number="profile.calorieGoal" required class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold text-brand-600 bg-slate-50">
                             <button type="button" @click="calculateCalorieGoal()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-xl whitespace-nowrap transition">Auto Calculate</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Protein Goal (g)</label>
+                            <input type="number" x-model.number="profile.proteinGoal" required min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Carbs Goal (g)</label>
+                            <input type="number" x-model.number="profile.carbsGoal" required min="0" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-slate-50">
                         </div>
                     </div>
                     <button type="submit" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl shadow-md transition text-sm">
@@ -487,7 +508,9 @@
                     height: 175,
                     gender: 'male',
                     activityMultiplier: 1.375,
-                    calorieGoal: 2200
+                    calorieGoal: 2200,
+                    proteinGoal: 150,
+                    carbsGoal: 200
                 },
                 meals: [],
                 selectedDate: new Date().toISOString().split('T')[0],
@@ -503,7 +526,9 @@
                 init() {
                     const savedProfile = localStorage.getItem('nutrisnap_profile');
                     if (savedProfile) {
-                        try { this.profile = JSON.parse(savedProfile); } catch (e) {}
+                        try { 
+                            this.profile = { ...this.profile, ...JSON.parse(savedProfile) }; 
+                        } catch (e) {}
                     }
                     const savedMeals = localStorage.getItem('nutrisnap_meals');
                     if (savedMeals) {
@@ -524,237 +549,3 @@
                         bmr += 5;
                     } else {
                         bmr -= 161;
-                    }
-                    this.profile.calorieGoal = Math.round(bmr * this.profile.activityMultiplier);
-                },
-
-                changeDate(days) {
-                    const d = new Date(this.selectedDate);
-                    d.setDate(d.getDate() + days);
-                    this.selectedDate = d.toISOString().split('T')[0];
-                },
-
-                isToday(dateStr) {
-                    return dateStr === new Date().toISOString().split('T')[0];
-                },
-
-                formatDateLabel(dateStr) {
-                    const d = new Date(dateStr);
-                    return d.toLocaleDateString('en-US', { weekday: 'short' });
-                },
-
-                formatDateFull(dateStr) {
-                    const d = new Date(dateStr);
-                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                },
-
-                getTodayMeals() {
-                    return this.meals.filter(m => m.date === this.selectedDate);
-                },
-
-                getTodayConsumed() {
-                    return this.getTodayMeals().reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
-                },
-
-                getTodayMacro(macroName) {
-                    return this.getTodayMeals().reduce((sum, m) => sum + (Number(m[macroName]) || 0), 0);
-                },
-
-                openScannerModal() {
-                    this.resetScanner();
-                    this.showScannerModal = true;
-                },
-
-                closeScannerModal() {
-                    this.showScannerModal = false;
-                },
-
-                resetScanner() {
-                    this.selectedImagePreview = null;
-                    this.selectedImageBase64 = null;
-                    this.mealDescription = '';
-                    this.isAnalyzing = false;
-                    this.aiResult = null;
-                },
-
-                handleImageSelect(event) {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        this.selectedImagePreview = e.target.result;
-                        this.selectedImageBase64 = e.target.result.split(',')[1];
-                    };
-                    reader.readAsDataURL(file);
-                },
-
-                async analyzeMealWithAI() {
-                    if (!this.selectedImageBase64) return;
-                    this.isAnalyzing = true;
-
-                    const apiKey = this.profile.apiKey;
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-                    const prompt = `Analyze this food image. ${this.mealDescription ? 'Additional notes: ' + this.mealDescription : ''}. Estimate the food items, portion size, total calories, protein (g), carbs (g), and fat (g). Return ONLY valid JSON format with keys: name, calories (integer), protein (integer), carbs (integer), fat (integer), description (short breakdown summary).`;
-
-                    const payload = {
-                        contents: [
-                            {
-                                role: 'user',
-                                parts: [
-                                    { text: prompt },
-                                    {
-                                        inlineData: {
-                                            mimeType: "image/jpeg",
-                                            data: this.selectedImageBase64
-                                        }
-                                    }
-                                ]
-                            }
-                        ],
-                        generationConfig: {
-                            responseMimeType: "application/json",
-                            responseSchema: {
-                                type: "OBJECT",
-                                properties: {
-                                    name: { type: "STRING" },
-                                    calories: { type: "INTEGER" },
-                                    protein: { type: "INTEGER" },
-                                    carbs: { type: "INTEGER" },
-                                    fat: { type: "INTEGER" },
-                                    description: { type: "STRING" }
-                                },
-                                propertyOrdering: ["name", "calories", "protein", "carbs", "fat", "description"]
-                            }
-                        }
-                    };
-
-                    try {
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        const result = await response.json();
-                        const candidate = result.candidates?.[0];
-                        if (candidate && candidate.content?.parts?.[0]?.text) {
-                            const parsed = JSON.parse(candidate.content.parts[0].text);
-                            this.aiResult = parsed;
-                        } else {
-                            throw new Error('Invalid response structure');
-                        }
-                    } catch (err) {
-                        // Fallback simulated response if API key is invalid or request fails
-                        this.aiResult = {
-                            name: this.mealDescription || "Healthy Meal Plate",
-                            calories: 520,
-                            protein: 35,
-                            carbs: 45,
-                            fat: 18,
-                            description: "Balanced meal containing lean protein, complex carbohydrates, and healthy fats."
-                        };
-                    } finally {
-                        this.isAnalyzing = false;
-                    }
-                },
-
-                saveAiMeal() {
-                    if (!this.aiResult) return;
-                    const newMeal = {
-                        id: Date.now().toString(),
-                        date: this.selectedDate,
-                        name: this.aiResult.name,
-                        calories: Number(this.aiResult.calories),
-                        protein: Number(this.aiResult.protein),
-                        carbs: Number(this.aiResult.carbs),
-                        fat: Number(this.aiResult.fat),
-                        image: this.selectedImagePreview
-                    };
-                    this.meals.unshift(newMeal);
-                    this.persistMeals();
-                    this.closeScannerModal();
-                },
-
-                openManualModal() {
-                    this.manualMeal = { name: '', calories: 400, protein: 25, carbs: 45, fat: 12 };
-                    this.showManualModal = true;
-                },
-
-                saveManualMeal() {
-                    const newMeal = {
-                        id: Date.now().toString(),
-                        date: this.selectedDate,
-                        name: this.manualMeal.name,
-                        calories: Number(this.manualMeal.calories),
-                        protein: Number(this.manualMeal.protein),
-                        carbs: Number(this.manualMeal.carbs),
-                        fat: Number(this.manualMeal.fat),
-                        image: null
-                    };
-                    this.meals.unshift(newMeal);
-                    this.persistMeals();
-                    this.showManualModal = false;
-                },
-
-                deleteMeal(id) {
-                    this.meals = this.meals.filter(m => m.id !== id);
-                    this.persistMeals();
-                },
-
-                persistMeals() {
-                    localStorage.setItem('nutrisnap_meals', JSON.stringify(this.meals));
-                },
-
-                getRecentHistory() {
-                    const daysMap = {};
-                    this.meals.forEach(m => {
-                        if (!daysMap[m.date]) {
-                            daysMap[m.date] = { date: m.date, calories: 0, count: 0 };
-                        }
-                        daysMap[m.date].calories += Number(m.calories) || 0;
-                        daysMap[m.date].count += 1;
-                    });
-                    return Object.values(daysMap).sort((a, b) => new Date(b.date) - new Date(a.date));
-                },
-
-                exportData() {
-                    const backupData = {
-                        profile: this.profile,
-                        meals: this.meals
-                    };
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-                    const downloadAnchor = document.createElement('a');
-                    downloadAnchor.setAttribute("href", dataStr);
-                    downloadAnchor.setAttribute("download", `nutrisnap_backup_${new Date().toISOString().split('T')[0]}.json`);
-                    document.body.appendChild(downloadAnchor);
-                    downloadAnchor.click();
-                    downloadAnchor.remove();
-                },
-
-                importData(event) {
-                    const file = event.target.files[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const imported = JSON.parse(e.target.result);
-                            if (imported.profile) {
-                                this.profile = imported.profile;
-                                localStorage.setItem('nutrisnap_profile', JSON.stringify(this.profile));
-                            }
-                            if (imported.meals) {
-                                this.meals = imported.meals;
-                                localStorage.setItem('nutrisnap_meals', JSON.stringify(this.meals));
-                            }
-                            alert('Backup successfully imported!');
-                        } catch (err) {
-                            alert('Error reading backup file. Please ensure it is a valid JSON file.');
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            }
-        }
-    </script>
-</body>
-</html>

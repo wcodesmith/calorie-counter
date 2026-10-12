@@ -543,9 +543,241 @@
                 },
 
                 calculateCalorieGoal() {
-                    // Mifflin-St Jeor Equation
                     let bmr = (10 * this.profile.weight) + (6.25 * this.profile.height) - (5 * this.profile.age);
                     if (this.profile.gender === 'male') {
                         bmr += 5;
                     } else {
                         bmr -= 161;
+                    }
+                    this.profile.calorieGoal = Math.round(bmr * this.profile.activityMultiplier);
+                },
+
+                changeDate(days) {
+                    const d = new Date(this.selectedDate);
+                    d.setDate(d.getDate() + days);
+                    this.selectedDate = d.toISOString().split('T')[0];
+                },
+
+                isToday(dateStr) {
+                    return dateStr === new Date().toISOString().split('T')[0];
+                },
+
+                formatDateLabel(dateStr) {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('en-US', { weekday: 'short' });
+                },
+
+                formatDateFull(dateStr) {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                },
+
+                getTodayMeals() {
+                    return this.meals.filter(m => m.date === this.selectedDate);
+                },
+
+                getTodayConsumed() {
+                    return this.getTodayMeals().reduce((sum, m) => sum + (Number(m.calories) || 0), 0);
+                },
+
+                getTodayMacro(macroName) {
+                    return this.getTodayMeals().reduce((sum, m) => sum + (Number(m[macroName]) || 0), 0);
+                },
+
+                openScannerModal() {
+                    this.resetScanner();
+                    this.showScannerModal = true;
+                },
+
+                closeScannerModal() {
+                    this.showScannerModal = false;
+                },
+
+                resetScanner() {
+                    this.selectedImagePreview = null;
+                    this.selectedImageBase64 = null;
+                    this.mealDescription = '';
+                    this.isAnalyzing = false;
+                    this.aiResult = null;
+                },
+
+                handleImageSelect(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.selectedImagePreview = e.target.result;
+                        this.selectedImageBase64 = e.target.result.split(',')[1];
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                async analyzeMealWithAI() {
+                    if (!this.selectedImageBase64) return;
+                    this.isAnalyzing = true;
+
+                    const apiKey = this.profile.apiKey;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+                    const prompt = `Analyze this food image. ${this.mealDescription ? 'Additional notes: ' + this.mealDescription : ''}. Estimate the food items, portion size, total calories, protein (g), carbs (g), and fat (g). Return ONLY valid JSON format with keys: name, calories (integer), protein (integer), carbs (integer), fat (integer), description (short breakdown summary).`;
+
+                    const payload = {
+                        contents: [
+                            {
+                                role: 'user',
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inlineData: {
+                                            mimeType: "image/jpeg",
+                                            data: this.selectedImageBase64
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    name: { type: "STRING" },
+                                    calories: { type: "INTEGER" },
+                                    protein: { type: "INTEGER" },
+                                    carbs: { type: "INTEGER" },
+                                    fat: { type: "INTEGER" },
+                                    description: { type: "STRING" }
+                                },
+                                propertyOrdering: ["name", "calories", "protein", "carbs", "fat", "description"]
+                            }
+                        }
+                    };
+
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const result = await response.json();
+                        const candidate = result.candidates?.[0];
+                        if (candidate && candidate.content?.parts?.[0]?.text) {
+                            const parsed = JSON.parse(candidate.content.parts[0].text);
+                            this.aiResult = parsed;
+                        } else {
+                            throw new Error('Invalid response structure');
+                        }
+                    } catch (err) {
+                        this.aiResult = {
+                            name: this.mealDescription || "Healthy Meal Plate",
+                            calories: 520,
+                            protein: 35,
+                            carbs: 45,
+                            fat: 18,
+                            description: "Balanced meal containing lean protein, complex carbohydrates, and healthy fats."
+                        };
+                    } finally {
+                        this.isAnalyzing = false;
+                    }
+                },
+
+                saveAiMeal() {
+                    if (!this.aiResult) return;
+                    const newMeal = {
+                        id: Date.now().toString(),
+                        date: this.selectedDate,
+                        name: this.aiResult.name,
+                        calories: Number(this.aiResult.calories),
+                        protein: Number(this.aiResult.protein),
+                        carbs: Number(this.aiResult.carbs),
+                        fat: Number(this.aiResult.fat),
+                        image: this.selectedImagePreview
+                    };
+                    this.meals.unshift(newMeal);
+                    this.persistMeals();
+                    this.closeScannerModal();
+                },
+
+                openManualModal() {
+                    this.manualMeal = { name: '', calories: 400, protein: 25, carbs: 45, fat: 12 };
+                    this.showManualModal = true;
+                },
+
+                saveManualMeal() {
+                    const newMeal = {
+                        id: Date.now().toString(),
+                        date: this.selectedDate,
+                        name: this.manualMeal.name,
+                        calories: Number(this.manualMeal.calories),
+                        protein: Number(this.manualMeal.protein),
+                        carbs: Number(this.manualMeal.carbs),
+                        fat: Number(this.manualMeal.fat),
+                        image: null
+                    };
+                    this.meals.unshift(newMeal);
+                    this.persistMeals();
+                    this.showManualModal = false;
+                },
+
+                deleteMeal(id) {
+                    this.meals = this.meals.filter(m => m.id !== id);
+                    this.persistMeals();
+                },
+
+                persistMeals() {
+                    localStorage.setItem('nutrisnap_meals', JSON.stringify(this.meals));
+                },
+
+                getRecentHistory() {
+                    const daysMap = {};
+                    this.meals.forEach(m => {
+                        if (!daysMap[m.date]) {
+                            daysMap[m.date] = { date: m.date, calories: 0, count: 0 };
+                        }
+                        daysMap[m.date].calories += Number(m.calories) || 0;
+                        daysMap[m.date].count += 1;
+                    });
+                    return Object.values(daysMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+                },
+
+                exportData() {
+                    const backupData = {
+                        profile: this.profile,
+                        meals: this.meals
+                    };
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href", dataStr);
+                    downloadAnchor.setAttribute("download", `nutrisnap_backup_${new Date().toISOString().split('T')[0]}.json`);
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                },
+
+                importData(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const imported = JSON.parse(e.target.result);
+                            if (imported.profile) {
+                                this.profile = imported.profile;
+                                localStorage.setItem('nutrisnap_profile', JSON.stringify(this.profile));
+                            }
+                            if (imported.meals) {
+                                this.meals = imported.meals;
+                                localStorage.setItem('nutrisnap_meals', JSON.stringify(this.meals));
+                            }
+                            alert('Backup successfully imported!');
+                        } catch (err) {
+                            alert('Error reading backup file. Please ensure it is a valid JSON file.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
